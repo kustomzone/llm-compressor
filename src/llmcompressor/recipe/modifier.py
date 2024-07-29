@@ -83,12 +83,12 @@ class RecipeModifier(RecipeBase):
     @model_validator(mode="before")
     @classmethod
     def extract_modifier_type(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        modifier = {"group": values.pop("group")}
-        assert len(values) == 1, "multiple key pairs found for modifier"
-        modifier_type, args = list(values.items())[0]
+        modifier = {"group": values["group"]}
+        # assert len(values) == 1, "multiple key pairs found for modifier"
+        # modifier_type, args = list(values.items())[0]
 
-        modifier["type"] = modifier_type
-        modifier["args"] = args
+        modifier["type"] = values["type"]
+        modifier["args"] = values["args"]
         return modifier
 
     def dict(self, *args, **kwargs) -> Dict[str, Any]:

@@ -125,6 +125,9 @@ class RecipeStage(RecipeBase):
     @model_validator(mode="before")
     @classmethod
     def remap_modifiers(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        if all(isinstance(mod, RecipeModifier) for mod in  values["modifiers"]):
+            return values
+        
         modifiers = RecipeStage.extract_dict_modifiers(values)
         values["modifiers"] = modifiers
 

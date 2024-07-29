@@ -12,6 +12,7 @@ from llmcompressor.modifiers import Modifier, StageModifiers
 from llmcompressor.recipe.args import RecipeArgs
 from llmcompressor.recipe.base import RecipeBase
 from llmcompressor.recipe.metadata import RecipeMetaData
+from llmcompressor.recipe.modifier import RecipeModifier
 from llmcompressor.recipe.stage import RecipeStage
 
 __all__ = ["Recipe", "RecipeTuple"]
@@ -27,6 +28,7 @@ class Recipe(RecipeBase):
     Acceptable file formats include both json and yaml, however,
     when serializing a recipe, yaml will be used by default.
     """
+
 
     @classmethod
     def from_modifiers(
@@ -62,13 +64,32 @@ class Recipe(RecipeBase):
         if any(not isinstance(modifier, Modifier) for modifier in modifiers):
             raise ValueError("modifiers must be a list of Modifier instances")
 
-        recipe_string: str = create_recipe_string_from_modifiers(
-            modifiers=modifiers,
-            modifier_group_name=modifier_group_name,
-        )
+        # recipe_string: str = create_recipe_string_from_modifiers(
+        #     modifiers=modifiers,
+        #     modifier_group_name=modifier_group_name,
+        # )
 
-        # modifier group name already included in the recipe string
-        return cls.create_instance(path_or_modifiers=recipe_string)
+        # # modifier group name already included in the recipe string
+        # return cls.create_instance(path_or_modifiers=recipe_string)
+        recipe_modifiers = [
+            RecipeModifier(
+                type=modifier.__class__.__name__,
+                args={field_name: getattr(modifier, field_name) for field_name in modifier.model_fields_set},
+                group="DEFAULT",
+            )
+            for modifier in modifiers
+        ]
+
+        instance = cls(
+            stages = [
+                RecipeStage(
+                    group="DEFAULT",
+                    modifiers=recipe_modifiers,
+                )
+            ],
+            args=RecipeArgs(),
+        )
+        return instance
 
     @classmethod
     def create_instance(
@@ -261,10 +282,10 @@ class Recipe(RecipeBase):
 
         return combined
 
-    version: str = None
+    version: Optional[str] = None
     args: RecipeArgs = Field(default_factory=RecipeArgs)
     stages: List[RecipeStage] = Field(default_factory=list)
-    metadata: RecipeMetaData = None
+    metadata: Optional[RecipeMetaData] = None
     args_evaluated: RecipeArgs = Field(default_factory=RecipeArgs)
 
     def calculate_start(self) -> int:
@@ -365,6 +386,9 @@ class Recipe(RecipeBase):
     @model_validator(mode="before")
     @classmethod
     def remap_stages(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        if all(isinstance(stage, RecipeStage) for stage in values["stages"]):
+            return values
+        
         stages = []
 
         modifiers = RecipeStage.extract_dict_modifiers(values)
